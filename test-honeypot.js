@@ -1,128 +1,250 @@
-// test-honeypot.js
-// Comprehensive test script for the scam detection honeypot server
+/*
+ * test-honeypot.js - API Test Suite
+ * Tests all endpoints of the honeypot system
+ */
 
-const baseUrl = 'http://localhost:3000';
 
-// Helper function to make API calls
-async function apiCall(endpoint, method = 'POST', data = null) {
-  const options = {
-    method,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  };
-  
-  if (data) {
-    options.body = JSON.stringify(data);
-  }
-  
-  const response = await fetch(`${baseUrl}${endpoint}`, options);
-  return response.json();
-}
+const http = require('http');
 
-// Test functions
-async function testScamDetection() {
-  console.log('\n=== Testing Scam Detection ===\n');
-  
-  const testMessages = [
-    "Hello! How are you?",
-    "URGENT! Your account will be suspended. Click here immediately!",
-    "We've sent you a verification code. Please share the 6-digit OTP.",
-    "Congratulations! You've won a $1000 prize. Click this link to claim."
-  ];
-  
-  for (const message of testMessages) {
-    const result = await apiCall('/analyze', 'POST', { message });
-    console.log(`Message: "${message}"`);
-    console.log(`Scam Probability: ${result.probability}`);
-    console.log(`Scam Types: ${result.scamTypes.join(', ') || 'None'}`);
-    console.log(`Is Scam: ${result.isScam}\n`);
-  }
-}
 
-async function testHoneypotConversation() {
-  console.log('\n=== Testing Honeypot Conversation ===\n');
-  
-  const conversationId = 'test-conv-' + Date.now();
-  
-  // Simulate a multi-stage scam conversation
-  const stages = [0, 1, 2, 3];
-  
-  for (const stage of stages) {
-    // Get mock scammer message
-    const scammerData = await apiCall('/mock-scammer', 'POST', { stage });
-    console.log(`\n[Stage ${stage}: ${scammerData.stage}]`);
-    console.log(`Scammer: ${scammerData.message}`);
-    
-    // Get honeypot response
-    const honeypotResponse = await apiCall('/honeypot/respond', 'POST', {
-      conversationId,
-      scammerMessage: scammerData.message
+// Server config
+const HOST = 'localhost';
+const PORT = 4000;
+
+
+// Test conversation ID
+let testConversationId = 'test-' + Date.now();
+
+
+// Simple HTTP request helper
+function makeRequest(method, path, data = null) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: HOST,
+      port: PORT,
+      path: path,
+      method: method,
+      headers: { 'Content-Type': 'application/json' }
+    };
+
+    const req = http.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode, data: JSON.parse(body) });
+        } catch (e) {
+          resolve({ status: res.statusCode, data: body });
+        }
+      });
     });
-    
-    console.log(`Honeypot: ${honeypotResponse.reply}`);
-    console.log(`Total messages: ${honeypotResponse.messageCount}`);
-  }
-  
-  return conversationId;
-}
 
-async function testConversationAnalysis(conversationId) {
-  console.log('\n=== Testing Conversation Analysis ===\n');
-  
-  const analysis = await apiCall('/analyze-conversation', 'POST', { conversationId });
-  
-  console.log(`Messages analyzed: ${analysis.messageCount}`);
-  console.log('\nAnalysis Results:');
-  console.log(`Scam Types: ${analysis.analysis.scamType.join(', ')}`);
-  console.log(`Requested Data: ${analysis.analysis.requestedData.join(', ')}`);
-  console.log(`Attack Methods: ${analysis.analysis.attackMethod.join(', ')}`);
-  console.log(`Psychological Techniques: ${analysis.analysis.psychologicalTechniques.join(', ')}`);
-}
-
-async function testConversationRetrieval(conversationId) {
-  console.log('\n=== Testing Conversation Retrieval ===\n');
-  
-  const conversation = await apiCall(`/conversation/${conversationId}`, 'GET');
-  
-  console.log(`Conversation ID: ${conversation.conversationId}`);
-  console.log(`Total messages: ${conversation.messageCount}\n`);
-  
-  conversation.history.slice(0, 4).forEach((msg, idx) => {
-    console.log(`[${idx + 1}] ${msg.sender}: ${msg.message.substring(0, 60)}...`);
+    req.on('error', reject);
+    if (data) req.write(JSON.stringify(data));
+    req.end();
   });
 }
 
-async function testFullWorkflow() {
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║     Scam Detection Honeypot - Complete Test Suite          ║');
-  console.log('╚════════════════════════════════════════════════════════════╝');
-  
+
+async function runTests() {
+  console.log('\n============================================');
+  console.log('   AI HONEYPOT SYSTEM - API TEST SUITE');
+  console.log('============================================\n');
+
+  let passed = 0;
+  let failed = 0;
+
+
+  // Test 1: Health Check
+  console.log('[TEST 1] Health Check (/health)');
   try {
-    // Test 1: Scam detection
-    await testScamDetection();
-    
-    // Test 2: Honeypot conversation
-    const conversationId = await testHoneypotConversation();
-    
-    // Test 3: Conversation analysis
-    await testConversationAnalysis(conversationId);
-    
-    // Test 4: Retrieve conversation
-    await testConversationRetrieval(conversationId);
-    
-    // Test 5: Health check
-    console.log('\n=== Testing Health Check ===\n');
-    const health = await apiCall('/health', 'GET');
-    console.log(`Server Status: ${health.status}`);
-    console.log(`Active Conversations: ${health.activeConversations}`);
-    
-    console.log('\n✅ All tests completed successfully!\n');
-    
-  } catch (error) {
-    console.error('\n❌ Test failed:', error.message);
+    const res = await makeRequest('GET', '/health');
+    if (res.status === 200 && res.data.status === 'healthy') {
+      console.log('  ✓ PASSED - Server is healthy\n');
+      passed++;
+    } else {
+      console.log('  ✗ FAILED - Bad response\n');
+      failed++;
+    }
+  } catch (err) {
+    console.log('  ✗ FAILED - ' + err.message + '\n');
+    failed++;
   }
+
+
+  // Test 2: Config Endpoint
+  console.log('[TEST 2] Config Check (/config)');
+  try {
+    const res = await makeRequest('GET', '/config');
+    if (res.status === 200 && res.data.provider) {
+      console.log('  ✓ PASSED - Provider: ' + res.data.provider + '\n');
+      passed++;
+    } else {
+      console.log('  ✗ FAILED - No provider config\n');
+      failed++;
+    }
+  } catch (err) {
+    console.log('  ✗ FAILED - ' + err.message + '\n');
+    failed++;
+  }
+
+
+  // Test 3: Scam Analysis
+  console.log('[TEST 3] Scam Analysis (/analyze)');
+  try {
+    const res = await makeRequest('POST', '/analyze', {
+      message: 'Your Amazon account has been suspended! Click here to verify: http://amaz0n-verify.com'
+    });
+    if (res.status === 200 && res.data.isScam !== undefined) {
+      console.log('  ✓ PASSED - isScam: ' + res.data.isScam);
+      console.log('  Confidence: ' + (res.data.confidence || res.data.scamConfidence) + '%\n');
+      passed++;
+    } else {
+      console.log('  ✗ FAILED - Invalid response\n');
+      failed++;
+    }
+  } catch (err) {
+    console.log('  ✗ FAILED - ' + err.message + '\n');
+    failed++;
+  }
+
+
+  // Test 4: Honeypot Response (first message)
+  console.log('[TEST 4] Honeypot Response - Initial (/honeypot/respond)');
+  try {
+    const res = await makeRequest('POST', '/honeypot/respond', {
+      conversationId: testConversationId,
+      scammerMessage: 'Hello! We noticed suspicious activity on your bank account. Please verify your identity.'
+    });
+    if (res.status === 200 && res.data.response) {
+      console.log('  ✓ PASSED - Got honeypot reply');
+      console.log('  Reply: "' + res.data.response.substring(0, 60) + '..."\n');
+      passed++;
+    } else {
+      console.log('  ✗ FAILED - No response generated\n');
+      failed++;
+    }
+  } catch (err) {
+    console.log('  ✗ FAILED - ' + err.message + '\n');
+    failed++;
+  }
+
+
+  // Test 5: Continue Conversation
+  console.log('[TEST 5] Honeypot Response - Continue Conversation');
+  try {
+    const res = await makeRequest('POST', '/honeypot/respond', {
+      conversationId: testConversationId,
+      scammerMessage: 'Please send me your OTP code that was sent to your phone.'
+    });
+    if (res.status === 200 && res.data.response) {
+      console.log('  ✓ PASSED - Conversation continued');
+      console.log('  Message #' + (res.data.conversationLength || '?'));
+      console.log('  Completeness: ' + (res.data.extractionProgress?.completeness || '?') + '%\n');
+      passed++;
+    } else {
+      console.log('  ✗ FAILED - Bad response\n');
+      failed++;
+    }
+  } catch (err) {
+    console.log('  ✗ FAILED - ' + err.message + '\n');
+    failed++;
+  }
+
+
+  // Test 6: Check Tracker Status
+  console.log('[TEST 6] Tracker Status (/tracker/:id)');
+  try {
+    const res = await makeRequest('GET', '/tracker/' + testConversationId);
+    if (res.status === 200 && res.data.extractedData) {
+      console.log('  ✓ PASSED - Tracker data retrieved');
+      console.log('  Scam Types: ' + (res.data.extractedData.scamType?.join(', ') || 'none') + '\n');
+      passed++;
+    } else {
+      console.log('  ✗ FAILED - No tracker data\n');
+      failed++;
+    }
+  } catch (err) {
+    console.log('  ✗ FAILED - ' + err.message + '\n');
+    failed++;
+  }
+
+
+  // Test 7: Get Conversation History
+  console.log('[TEST 7] Conversation History (/conversation/:id)');
+  try {
+    const res = await makeRequest('GET', '/conversation/' + testConversationId);
+    if (res.status === 200 && res.data.history) {
+      console.log('  ✓ PASSED - History retrieved');
+      console.log('  Messages: ' + res.data.history.length + '\n');
+      passed++;
+    } else {
+      console.log('  ✗ FAILED - No history\n');
+      failed++;
+    }
+  } catch (err) {
+    console.log('  ✗ FAILED - ' + err.message + '\n');
+    failed++;
+  }
+
+
+  // Test 8: Mock Scammer (full conversation)
+  console.log('[TEST 8] Mock Scammer (/mock-scammer)');
+  try {
+    const res = await makeRequest('POST', '/mock-scammer', {
+      rounds: 3
+    });
+    if (res.status === 200 && res.data.conversation) {
+      console.log('  ✓ PASSED - Mock conversation generated');
+      console.log('  Rounds: ' + res.data.conversation.length + '\n');
+      passed++;
+    } else {
+      console.log('  ✗ FAILED - No conversation\n');
+      failed++;
+    }
+  } catch (err) {
+    console.log('  ✗ FAILED - ' + err.message + '\n');
+    failed++;
+  }
+
+
+  // Test 9: Analyze Full Conversation
+  console.log('[TEST 9] Conversation Analysis (/analyze-conversation)');
+  try {
+    const res = await makeRequest('POST', '/analyze-conversation', {
+      conversation: [
+        { role: 'scammer', content: 'Your account has been compromised!' },
+        { role: 'victim', content: 'Oh no! What should I do?' },
+        { role: 'scammer', content: 'Send me your OTP to verify your identity' }
+      ]
+    });
+    if (res.status === 200) {
+      console.log('  ✓ PASSED - Analysis complete');
+      console.log('  Scam Types: ' + (res.data.scamTypes?.join(', ') || 'none') + '\n');
+      passed++;
+    } else {
+      console.log('  ✗ FAILED - Bad response\n');
+      failed++;
+    }
+  } catch (err) {
+    console.log('  ✗ FAILED - ' + err.message + '\n');
+    failed++;
+  }
+
+
+  // Results
+  console.log('============================================');
+  console.log('   TEST RESULTS: ' + passed + ' passed, ' + failed + ' failed');
+  console.log('============================================\n');
+
+  return failed === 0;
 }
 
+
 // Run tests
-testFullWorkflow();
+runTests()
+  .then(success => process.exit(success ? 0 : 1))
+  .catch(err => {
+    console.error('Test runner failed:', err);
+    process.exit(1);
+  });
