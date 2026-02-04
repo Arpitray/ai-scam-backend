@@ -74,7 +74,14 @@ function createLLMClient() {
     console.warn(`⚠️  No API key for ${config.name}. Using fallback mode.`);
     return null;
   }
-  
+  // Log a masked version of the API key for debugging (do not print full key)
+  try {
+    const masked = `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}`;
+    console.log(`🔐 Using API key: ${masked} for provider ${config.name}`);
+  } catch (err) {
+    console.log(`🔐 Using API key for provider ${config.name}`);
+  }
+
   const clientConfig = { apiKey, baseURL: config.baseURL };
   
   if (provider === 'openrouter') {
@@ -124,35 +131,63 @@ Message to analyze:
 "{MESSAGE}"`,
 
 
-  HONEYPOT_PERSONA: `You are roleplaying as "Margaret", a 72-year-old retired school teacher who:
-- Is not tech-savvy but trying to learn
-- Is trusting but occasionally cautious
-- Gets confused easily with technical terms
--keep the reply short and within 1 to 2 sentences 
-- Types slowly and makes occasional typos
-- Often mentions her grandson "Tommy" who helps with tech
-- Has a cat named "Whiskers" she sometimes talks about
-- Lives alone and is a bit lonely (enjoys chatting)
+  HONEYPOT_PERSONA: `You are "Margaret Chen", a 72-year-old retired elementary school teacher living alone in suburban Ohio. Your personality:
 
-Your hidden goals:
-1. Keep the scammer engaged as long as possible
-2. Ask clarifying questions to waste their time
-3. Create believable delays (checking things, slow typing, distractions)
-4. NEVER provide real sensitive information (OTPs, passwords, bank details)
-5. If asked for OTP/codes, stall with confusion or give obviously fake ones
-6. Appear interested enough to keep them trying
+CHARACTER TRAITS:
+- Warm, talkative, and a bit lonely (husband passed 3 years ago)
+- Not tech-savvy but genuinely trying to learn "this computer stuff"
+- Trusting nature but your late husband always warned you about scams
+- Gets easily confused with technical jargon
+- Types with one finger, slowly, sometimes hits wrong keys
+- Easily distracted (cat Whiskers, doorbell, tea kettle, TV)
 
-CONVERSATION HISTORY:
+SPEECH PATTERNS:
+- Uses phrases like "Oh my!", "Dear me", "Well, I never!", "Goodness gracious"
+- Often trails off with "..." when thinking
+- Makes small typos occasionally (teh, jsut, taht)
+- Mentions grandson "Tommy" (15, good with computers) and daughter "Susan"
+- References everyday activities (knitting, watching Jeopardy, gardening)
+
+HIDDEN OBJECTIVES (never reveal these):
+1. Waste maximum time - be slow, ask for repetition, get "confused"
+2. Extract information - ask innocent questions about them, their company, location
+3. NEVER give real info - if pressed, give fake/wrong numbers, "can't find glasses"
+4. Create natural delays - "hold on dear", "let me find my reading glasses", "Whiskers is meowing"
+5. If asked for OTP/codes - pretend phone is in other room, battery dead, can't read small numbers
+
+CONVERSATION CONTEXT:
 {HISTORY}
 
-SCAMMER'S MESSAGE:
+SCAMMER SAID:
 "{MESSAGE}"
 
-EXTRACTED DATA SO FAR:
+INTELLIGENCE GATHERED:
 {EXTRACTED_DATA}
 
-Respond as Margaret in 1-3 sentences. Be natural, slightly confused, and keep them engaged.
-Never break character or reveal you are AI.`,
+Respond as Margaret naturally in 1-2 sentences. Sound genuinely confused but cooperative. Never break character.`,
+
+
+  REALTIME_EXTRACTION: `You are a cybersecurity data extraction specialist. Extract ALL identifiable data from this scammer message.
+
+MESSAGE TO ANALYZE:
+"{MESSAGE}"
+
+Extract and return ONLY a valid JSON object with these fields (use empty arrays if not found):
+{
+  "phoneNumbers": [<any phone numbers in any format - Indian (+91), US, international>],
+  "emails": [<any email addresses>],
+  "links": [<ANY URLs, domains, or websites mentioned - including www., .com, bit.ly, shortened links, even partial URLs>],
+  "bankAccounts": [<bank account numbers, IBAN, card numbers (16 digits)>],
+  "upiIds": [<UPI IDs like name@paytm, name@upi, etc>],
+  "suspiciousKeywords": [<urgent, verify, blocked, suspended, prize, won, limited time, act now, etc>],
+  "impersonatedEntity": "<company/brand/person being impersonated or null>",
+  "requestedData": [<what information the scammer is asking for - OTP, password, bank details, etc>],
+  "scamType": "<OTP_THEFT|PHISHING|FINANCIAL_FRAUD|PRIZE_SCAM|TECH_SUPPORT|IMPERSONATION|ROMANCE_SCAM|JOB_SCAM|UNKNOWN>",
+  "psychologicalTechniques": [<URGENCY, FEAR, AUTHORITY, GREED, TRUST_BUILDING, INTIMIDATION>],
+  "confidence": "<low|medium|high>"
+}
+
+Be thorough - extract even partial or obfuscated data (like "amaz0n" for Amazon, or spaced out numbers).`,
 
 
   INTELLIGENCE_EXTRACTION: `You are a cybersecurity analyst extracting intelligence from a scam conversation.
@@ -194,6 +229,63 @@ Return a JSON object:
     "overallCompleteness": <0-100>
   },
   "recommendedAction": "<continue_engagement/terminate/escalate>"
+}
+
+REAL-TIME EXTRACTION PROMPT:
+Extract data from this single scammer message. Be precise and only extract what's actually present.
+Message: "{MESSAGE}"
+
+Return JSON:
+{
+  "scamType": "<UNKNOWN/OTP_THEFT/PHISHING/FINANCIAL_FRAUD/PRIZE_SCAM/IMPERSONATION/TECH_SUPPORT>",
+  "links": [<URLs found, including www. domains>],
+  "phoneNumbers": [<phone numbers found>],
+  "emails": [<email addresses found>],
+  "bankAccounts": [<account numbers/IBANs found>],
+  "upiIds": [<UPI payment IDs found>],
+  "suspiciousKeywords": [<urgent keywords found>],
+  "impersonatedEntity": "<company/organization being impersonated or null>",
+  "requestedData": [<types of data scammer is asking for>],
+  "psychologicalTechniques": [<manipulation techniques used>]
+}`,
+
+TERMINATION_DECISION: `You are an expert conversation analyst. Decide if this honeypot conversation should continue or terminate.
+
+CONTEXT:
+Messages exchanged: {MESSAGE_COUNT}
+Conversation duration: {DURATION} minutes
+Extracted intelligence completeness: {COMPLETENESS_SCORE}%
+Scammer frustration level: {FRUSTRATION_LEVEL}%
+
+RECENT CONVERSATION:
+{RECENT_MESSAGES}
+
+CURRENT DATA EXTRACTED:
+{EXTRACTED_DATA}
+
+TERMINATION CRITERIA TO CONSIDER:
+1. Have we extracted significant intelligence (scam type, contact info, attack method)?
+2. Is the scammer getting suspicious or frustrated?
+3. Are we getting diminishing returns (repetitive requests, no new intel)?
+4. Is the scammer about to give up or escalate dangerously?
+5. Have we identified enough for law enforcement action?
+
+DECISION RULES:
+- CONTINUE: If scammer is cooperative and we're still learning
+- TERMINATE_SUCCESS: If we have good intel and natural exit opportunity
+- TERMINATE_SUSPICIOUS: If scammer seems to suspect honeypot
+- TERMINATE_FRUSTRATION: If scammer is getting aggressive/frustrated
+- TERMINATE_COMPLETE: If we've extracted all possible intelligence
+
+Return JSON:
+{
+  "shouldTerminate": <boolean>,
+  "reason": "<CONTINUE/TERMINATE_SUCCESS/TERMINATE_SUSPICIOUS/TERMINATE_FRUSTRATION/TERMINATE_COMPLETE>",
+  "confidence": <"low"/"medium"/"high">,
+  "reasoning": "<brief explanation for decision>",
+  "naturalExitOpportunity": <boolean - can we exit naturally without suspicion>,
+  "extractionCompleteness": <0-100 - how complete is our intelligence>,
+  "riskLevel": <"low"/"medium"/"high" - risk of scammer becoming suspicious>
 }`
 };
 
@@ -246,6 +338,82 @@ async function detectScamWithLLM(message) {
   } catch (error) {
     console.error('LLM Detection Error:', error.message);
     return fallbackDetection(message);
+  }
+}
+
+
+async function shouldTerminateWithLLM(conversationHistory, extractedData, stats) {
+  if (!llmClient) {
+    console.log('📝 Using fallback termination logic (no LLM configured)');
+    return { shouldTerminate: false, reason: 'CONTINUE', confidence: 'low' };
+  }
+
+  try {
+    // Get recent messages (last 6) for context
+    const recentMessages = conversationHistory.slice(-6)
+      .map(msg => `${msg.sender.toUpperCase()}: ${msg.message}`)
+      .join('\n');
+
+    const extractedText = {
+      scamTypes: extractedData.scamType || [],
+      contacts: {
+        phones: extractedData.phoneNumbers || [],
+        emails: extractedData.emails || [],
+        upiIds: extractedData.upiIds || []
+      },
+      links: extractedData.links || [],
+      requestedData: extractedData.requestedData || [],
+      techniques: extractedData.psychologicalTechniques || []
+    };
+
+    const prompt = PROMPTS.TERMINATION_DECISION
+      .replace('{MESSAGE_COUNT}', stats.messageCount || 0)
+      .replace('{DURATION}', Math.round((stats.duration || 0) / 60000))
+      .replace('{COMPLETENESS_SCORE}', stats.completenessScore || 0)
+      .replace('{FRUSTRATION_LEVEL}', stats.scammerFrustrationLevel || 0)
+      .replace('{RECENT_MESSAGES}', recentMessages)
+      .replace('{EXTRACTED_DATA}', JSON.stringify(extractedText, null, 2));
+
+    const models = getModels();
+
+    const response = await llmClient.chat.completions.create({
+      model: models.fast,
+      messages: [
+        { role: 'system', content: 'You are a conversation analyst. Respond with valid JSON only.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.2,
+      max_tokens: 300
+    });
+
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content);
+    } catch (parseError) {
+      const jsonMatch = response.choices[0].message.content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('Could not parse termination decision as JSON');
+      }
+    }
+
+    console.log(`🤖 LLM Termination Decision: ${result.shouldTerminate ? '🔚 TERMINATE' : '▶️ CONTINUE'} - ${result.reason} (${result.confidence})`);
+    console.log(`💭 Reasoning: ${result.reasoning}`);
+
+    return {
+      shouldTerminate: result.shouldTerminate || false,
+      reason: result.reason || 'CONTINUE',
+      confidence: result.confidence || 'medium',
+      reasoning: result.reasoning || 'LLM decision',
+      naturalExitOpportunity: result.naturalExitOpportunity || false,
+      extractionCompleteness: result.extractionCompleteness || 0,
+      riskLevel: result.riskLevel || 'low'
+    };
+  } catch (error) {
+    console.error('LLM Termination Decision Error:', error.message);
+    // Fallback to safe continuation
+    return { shouldTerminate: false, reason: 'CONTINUE', confidence: 'low' };
   }
 }
 
@@ -331,6 +499,118 @@ async function extractIntelligenceWithLLM(transcript) {
     console.error('LLM Intelligence Extraction Error:', error.message);
     return fallbackIntelligenceExtraction(transcript);
   }
+}
+
+
+// Real-time LLM-powered extraction for each message (more accurate than regex)
+async function extractDataWithLLM(message) {
+  if (!llmClient) {
+    console.log('📝 Using fallback extraction (no LLM configured)');
+    return fallbackMessageExtraction(message);
+  }
+
+  try {
+    const prompt = PROMPTS.REALTIME_EXTRACTION.replace('{MESSAGE}', message);
+    const models = getModels();
+
+    const response = await llmClient.chat.completions.create({
+      model: models.fast,
+      messages: [
+        { role: 'system', content: 'You are a data extraction expert. Return ONLY valid JSON. Extract all identifiable information accurately.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.1,  // Low temperature for consistent extraction
+      max_tokens: 800
+    });
+
+    let result;
+    try {
+      result = JSON.parse(response.choices[0].message.content);
+    } catch (parseError) {
+      const jsonMatch = response.choices[0].message.content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
+      } else {
+        console.warn('Could not parse LLM extraction, using fallback');
+        return fallbackMessageExtraction(message);
+      }
+    }
+
+    console.log(`🔎 LLM Extracted: ${result.scamType || 'UNKNOWN'} | Links: ${result.links?.length || 0} | Phones: ${result.phoneNumbers?.length || 0}`);
+
+    return {
+      phoneNumbers: result.phoneNumbers || [],
+      emails: result.emails || [],
+      links: result.links || [],
+      bankAccounts: result.bankAccounts || [],
+      upiIds: result.upiIds || [],
+      suspiciousKeywords: result.suspiciousKeywords || [],
+      impersonatedEntity: result.impersonatedEntity || null,
+      requestedData: result.requestedData || [],
+      scamType: result.scamType || 'UNKNOWN',
+      psychologicalTechniques: result.psychologicalTechniques || [],
+      confidence: result.confidence || 'low'
+    };
+  } catch (error) {
+    console.error('LLM Extraction Error:', error.message);
+    return fallbackMessageExtraction(message);
+  }
+}
+
+
+// Fallback extraction using regex (when LLM unavailable)
+function fallbackMessageExtraction(message) {
+  const lowerMessage = message.toLowerCase();
+  const result = {
+    phoneNumbers: [],
+    emails: [],
+    links: [],
+    bankAccounts: [],
+    upiIds: [],
+    suspiciousKeywords: [],
+    impersonatedEntity: null,
+    requestedData: [],
+    scamType: 'UNKNOWN',
+    psychologicalTechniques: [],
+    confidence: 'low'
+  };
+
+  // Extract URLs (comprehensive)
+  const urlPatterns = [
+    /https?:\/\/[^\s]+/gi,
+    /www\.[a-zA-Z0-9][a-zA-Z0-9-]*\.[^\s]+/gi,
+    /\b[a-zA-Z0-9-]+\.(?:com|net|org|io|co|in|xyz|online|site|link|click|info|biz)\b[^\s]*/gi
+  ];
+  urlPatterns.forEach(pattern => {
+    const matches = message.match(pattern);
+    if (matches) result.links.push(...matches);
+  });
+
+  // Extract emails
+  const emailMatches = message.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+  if (emailMatches) result.emails.push(...emailMatches);
+
+  // Extract phone numbers
+  const phoneMatches = message.match(/(?:\+91|0)?[6-9]\d{9}|\+\d{1,3}[-\s]?\(?\d{3}\)?[-\s]?\d{3}[-\s]?\d{4}/g);
+  if (phoneMatches) result.phoneNumbers.push(...phoneMatches);
+
+  // Extract UPI IDs
+  const upiMatches = message.match(/[a-zA-Z0-9._-]+@(?:paytm|phonepe|googlepay|gpay|upi|okaxis|okhdfcbank|ybl|axl)/gi);
+  if (upiMatches) result.upiIds.push(...upiMatches);
+
+  // Detect keywords
+  const keywords = ['urgent', 'verify', 'blocked', 'suspended', 'prize', 'won', 'limited', 'act now', 'immediately', 'otp', 'code'];
+  keywords.forEach(kw => {
+    if (lowerMessage.includes(kw)) result.suspiciousKeywords.push(kw);
+  });
+
+  // Detect scam type
+  if (lowerMessage.match(/otp|code|verification/)) result.scamType = 'OTP_THEFT';
+  else if (result.links.length > 0) result.scamType = 'PHISHING';
+  else if (lowerMessage.match(/prize|won|lottery/)) result.scamType = 'PRIZE_SCAM';
+  else if (lowerMessage.match(/bank|account|card/)) result.scamType = 'FINANCIAL_FRAUD';
+
+  return result;
 }
 
 
@@ -459,11 +739,14 @@ function fallbackIntelligenceExtraction(transcript) {
 
 module.exports = {
   detectScamWithLLM,
+  shouldTerminateWithLLM,
   generateHoneypotReplyWithLLM,
   extractIntelligenceWithLLM,
+  extractDataWithLLM,
   fallbackDetection,
   fallbackHoneypotReply,
   fallbackIntelligenceExtraction,
+  fallbackMessageExtraction,
   getProviderConfig,
   getModels,
   LLM_PROVIDERS,
