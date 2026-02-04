@@ -54,7 +54,16 @@ const https = require('https');
 const extractedIntelligenceStore = [];
 
 function sendExtractedIntelligence(payload) {
-  const webhook = process.env.EXTRACTED_INTEL_WEBHOOK || `http://localhost:${process.env.PORT || 4000}/receive-extracted-intelligence`;
+  // Always store locally so that the immediate dashboard view works without relying on a self-webhook
+  try {
+    const localPayload = { ...payload, _receivedAt: new Date().toISOString() };
+    extractedIntelligenceStore.push(localPayload);
+  } catch (err) {
+    console.error('Error storing intelligence locally:', err);
+  }
+
+  // Send to external webhook (Default: Hackathon Endpoint)
+  const webhook = process.env.EXTRACTED_INTEL_WEBHOOK || 'https://hackathon.guvi.in/api/updateHoneyPotFinalResult';
 
   try {
     const urlObj = new URL(webhook);
@@ -72,8 +81,11 @@ function sendExtractedIntelligence(payload) {
 
     const client = urlObj.protocol === 'https:' ? https : http;
     const req = client.request(opts, (res) => {
-      // consume response and ignore
-      res.on('data', () => {});
+      let responseBody = '';
+      res.on('data', (chunk) => { responseBody += chunk; });
+      res.on('end', () => {
+        console.log(`🔔 Webhook response from ${urlObj.hostname}: ${res.statusCode}`);
+      });
     });
 
     req.on('error', (err) => {
