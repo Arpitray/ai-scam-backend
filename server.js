@@ -3,11 +3,7 @@
  * Handles all API routes for the honeypot system
  */
 
-// Clear any existing env vars that might interfere
-delete process.env.OPENAI_API_KEY;
-delete process.env.OPENROUTER_API_KEY;
-
-require('dotenv').config({ override: true });
+require('dotenv').config();
 const express = require('express');
 const app = express();
 
