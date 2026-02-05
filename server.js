@@ -81,7 +81,7 @@ const extractedIntelligenceStore = [];
 
 function sendExtractedIntelligence(payload) {
   try {
-    const localPayload = { ...payload, _receivedAt: new Date().toISOString() };
+    const localPayload = { ...payload, _receivedAt: Date.now() };
     extractedIntelligenceStore.push(localPayload);
   } catch (err) {
     console.error('Error storing intelligence locally:', err);
@@ -128,7 +128,7 @@ function sendExtractedIntelligence(payload) {
 app.post('/receive-extracted-intelligence', (req, res) => {
   try {
     const payload = req.body || {};
-    payload._receivedAt = new Date().toISOString();
+    payload._receivedAt = Date.now();
     extractedIntelligenceStore.push(payload);
     console.log('📥 Received extracted intelligence for session', payload.sessionId || '(unknown)');
     // Acknowledge receipt and return stored count
@@ -157,12 +157,8 @@ app.get('/receive-extracted-intelligence', (req, res) => {
 // Main honeypot endpoint - receives scammer message, returns honeypot reply
 app.post('/honeypot/respond', async (req, res) => {
   try {
-    // Support multiple formats:
-    // 1. Original: { conversationId, scammerMessage, conversationHistory }
-    // 2. Hackathon (object): { sessionId, message: { text, sender, timestamp }, conversationHistory, metadata }
-    // 3. Hackathon (string): { sessionId, message: "text here", conversationHistory, metadata }
     
-    let conversationId, scammerMessage, conversationHistory, metadata;
+    let conversationId, scammerMessage, conversationHistory, metadata, scammerTimestamp;
     
     if (req.body.sessionId && req.body.message) {
       // Hackathon format
@@ -171,6 +167,7 @@ app.post('/honeypot/respond', async (req, res) => {
       // Handle message as object or string
       if (typeof req.body.message === 'object' && req.body.message.text) {
         scammerMessage = req.body.message.text;
+        scammerTimestamp = req.body.message.timestamp; // Extract timestamp if provided
       } else if (typeof req.body.message === 'string') {
         scammerMessage = req.body.message;
       } else {
@@ -251,11 +248,11 @@ app.post('/honeypot/respond', async (req, res) => {
 
     let history = conversationHistory || conversations.get(conversationId) || [];
 
-    // Add scammer message
+    // Add scammer message with timestamp from input or current time
     history.push({
       sender: 'scammer',
       message: scammerMessage,
-      timestamp: new Date().toISOString()
+      timestamp: scammerTimestamp || Date.now()
     });
 
     // Use LLM for both scam detection AND intelligent data extraction
@@ -283,7 +280,7 @@ app.post('/honeypot/respond', async (req, res) => {
       history.push({
         sender: 'honeypot',
         message: sendoffMessage,
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
         isSendoff: true
       });
       
@@ -342,7 +339,7 @@ app.post('/honeypot/respond', async (req, res) => {
     history.push({
       sender: 'honeypot',
       message: honeypotReply,
-      timestamp: new Date().toISOString()
+      timestamp: Date.now()
     });
 
     tracker.addMessage('honeypot', honeypotReply);
@@ -351,32 +348,19 @@ app.post('/honeypot/respond', async (req, res) => {
     const trackerState = tracker.getState();
     const extractedData = trackerState.extractedData;
 
-    const responsePayload = {
+    // Build response with strictly required fields
+    res.json({
       sessionId: conversationId,
+      reply: honeypotReply,
       scamDetected: extractedData.scamType.length > 0,
-      totalMessagesExchanged: history.length,
       extractedIntelligence: {
         bankAccounts: extractedData.bankAccounts || [],
         upiIds: extractedData.upiIds || [],
         phishingLinks: extractedData.links || [],
         phoneNumbers: extractedData.phoneNumbers || [],
-        emails: extractedData.emails || [],
         suspiciousKeywords: extractedData.suspiciousKeywords || []
-      },
-      conversationHistory: history,
-      agentNotes: `Scam type: ${extractedData.scamType.join(', ') || 'Unknown'}. ` +
-                  `Techniques: ${extractedData.psychologicalTechniques.join(', ') || 'None'}. ` +
-                  `Completeness: ${trackerState.completenessScore}%`,
-      status: 'success',
-      reply: honeypotReply
-    };
-    
-    // Include metadata if provided (hackathon format)
-    if (metadata) {
-      responsePayload.metadata = metadata;
-    }
-    
-    res.json(responsePayload);
+      }
+    });
 
   } catch (error) {
     console.error('Honeypot response error:', error);
@@ -444,7 +428,7 @@ app.post('/tracker/:id/terminate', (req, res) => {
   history.push({
     sender: 'honeypot',
     message: sendoffMessage,
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     isSendoff: true
   });
   conversations.set(id, history);
