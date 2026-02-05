@@ -380,7 +380,7 @@ app.get('/conversation/:id', (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.send("Welcome to the Honeypot API! Available endpoints: POST /honeypot/respond, GET /conversation/:id, DELETE /conversation/:id, GET /tracker/:id, POST /tracker/:id/terminate, GET /active-conversations, GET /completed-conversations, GET /receive-extracted-intelligence, GET /health, GET /config");
+  res.json("Welcome to the Honeypot API! Available endpoints: POST /honeypot/respond, GET /conversation/:id, DELETE /conversation/:id, GET /tracker/:id, POST /tracker/:id/terminate, GET /active-conversations, GET /completed-conversations, GET /receive-extracted-intelligence, GET /health, GET /config");
 })
 
 
