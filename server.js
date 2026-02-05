@@ -211,15 +211,11 @@ app.post('/honeypot/respond', async (req, res) => {
           upiIds: extractedData.upiIds || [],
           phishingLinks: extractedData.links || [],
           phoneNumbers: extractedData.phoneNumbers || [],
-          emails: extractedData.emails || [],
           suspiciousKeywords: extractedData.suspiciousKeywords || []
         },
         agentNotes: `Scam type: ${extractedData.scamType.join(', ') || 'Unknown'}. ` +
                     `Techniques: ${extractedData.psychologicalTechniques.join(', ') || 'None'}. ` +
-                    `Termination: ${tracker.terminationReason}`,
-        status: 'terminated',
-        conversationHistory: conversations.get(conversationId) || [],
-        finalReport: finalReport
+                    `Termination: ${tracker.terminationReason}`
       };
 
       setImmediate(() => sendExtractedIntelligence(completedPayload));
@@ -300,17 +296,11 @@ app.post('/honeypot/respond', async (req, res) => {
           upiIds: extractedData.upiIds || [],
           phishingLinks: extractedData.links || [],
           phoneNumbers: extractedData.phoneNumbers || [],
-          emails: extractedData.emails || [],
           suspiciousKeywords: extractedData.suspiciousKeywords || []
         },
         agentNotes: `Scam type: ${extractedData.scamType.join(', ') || 'Unknown'}. ` +
                     `Techniques: ${extractedData.psychologicalTechniques.join(', ') || 'None'}. ` +
-                    `Termination: ${termCheck.terminationReason}`,
-        status: 'terminated',
-        terminationReason: termCheck.terminationReason,
-        terminationDescription: termCheck.terminationDescription,
-        finalReport: termCheck.finalReport,
-        conversationHistory: history
+                    `Termination: ${termCheck.terminationReason}`
       };
 
       setImmediate(() => sendExtractedIntelligence(terminationPayload));
