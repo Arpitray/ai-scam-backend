@@ -157,16 +157,29 @@ app.get('/receive-extracted-intelligence', (req, res) => {
 // Main honeypot endpoint - receives scammer message, returns honeypot reply
 app.post('/honeypot/respond', async (req, res) => {
   try {
-    // Support both formats:
+    // Support multiple formats:
     // 1. Original: { conversationId, scammerMessage, conversationHistory }
-    // 2. Hackathon: { sessionId, message: { text, sender, timestamp }, conversationHistory, metadata }
+    // 2. Hackathon (object): { sessionId, message: { text, sender, timestamp }, conversationHistory, metadata }
+    // 3. Hackathon (string): { sessionId, message: "text here", conversationHistory, metadata }
     
     let conversationId, scammerMessage, conversationHistory, metadata;
     
     if (req.body.sessionId && req.body.message) {
       // Hackathon format
       conversationId = req.body.sessionId;
-      scammerMessage = req.body.message.text;
+      
+      // Handle message as object or string
+      if (typeof req.body.message === 'object' && req.body.message.text) {
+        scammerMessage = req.body.message.text;
+      } else if (typeof req.body.message === 'string') {
+        scammerMessage = req.body.message;
+      } else {
+        return res.status(400).json({ 
+          error: 'Invalid message format', 
+          message: 'message should be either a string or an object with text property' 
+        });
+      }
+      
       conversationHistory = req.body.conversationHistory;
       metadata = req.body.metadata;
     } else {
@@ -180,7 +193,7 @@ app.post('/honeypot/respond', async (req, res) => {
     if (!conversationId || !scammerMessage) {
       return res.status(400).json({ 
         error: 'Missing required fields', 
-        message: 'Provide either { sessionId, message: { text } } or { conversationId, scammerMessage }' 
+        message: 'Provide either { sessionId, message } or { conversationId, scammerMessage }' 
       });
     }
 
