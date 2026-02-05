@@ -226,27 +226,30 @@ app.post('/honeypot/respond', async (req, res) => {
 
       return res.json({
         sessionId: conversationId,
-        conversationHistory: conversations.get(conversationId) || [],
+        reply: 'Conversation ended',
         scamDetected: extractedData.scamType.length > 0,
-        totalMessagesExchanged: tracker.messageCount,
         extractedIntelligence: {
           bankAccounts: extractedData.bankAccounts || [],
           upiIds: extractedData.upiIds || [],
           phishingLinks: extractedData.links || [],
           phoneNumbers: extractedData.phoneNumbers || [],
-          emails: extractedData.emails || [],
           suspiciousKeywords: extractedData.suspiciousKeywords || []
-        },
-        agentNotes: `Scam type: ${extractedData.scamType.join(', ') || 'Unknown'}. ` +
-                    `Techniques: ${extractedData.psychologicalTechniques.join(', ') || 'None'}. ` +
-                    `Termination: ${tracker.terminationReason}`,
-        status: 'terminated',
-        reply: 'Conversation ended',
-        terminationReason: tracker.terminationReason
+        }
       });
     }
 
     let history = conversationHistory || conversations.get(conversationId) || [];
+    
+    // Normalize conversation history format if it comes from hackathon (text field instead of message)
+    if (Array.isArray(history)) {
+      history = history.map(msg => {
+        // If the message has 'text' field but not 'message', normalize it
+        if (msg.text && !msg.message) {
+          return { ...msg, message: msg.text };
+        }
+        return msg;
+      });
+    }
 
     // Add scammer message with timestamp from input or current time
     history.push({
@@ -314,22 +317,15 @@ app.post('/honeypot/respond', async (req, res) => {
 
       return res.json({
         sessionId: conversationId,
-        scamDetected: extractedData.scamType.length > 0,
-        totalMessagesExchanged: history.length,
         reply: sendoffMessage,
+        scamDetected: extractedData.scamType.length > 0,
         extractedIntelligence: {
           bankAccounts: extractedData.bankAccounts || [],
           upiIds: extractedData.upiIds || [],
           phishingLinks: extractedData.links || [],
           phoneNumbers: extractedData.phoneNumbers || [],
-          emails: extractedData.emails || [],
           suspiciousKeywords: extractedData.suspiciousKeywords || []
-        },
-        agentNotes: `Scam type: ${extractedData.scamType.join(', ') || 'Unknown'}. ` +
-                    `Techniques: ${extractedData.psychologicalTechniques.join(', ') || 'None'}. ` +
-                    `Termination: ${termCheck.terminationReason}`,
-        status: 'terminated',
-        terminationReason: termCheck.terminationReason
+        }
       });
     }
 
@@ -349,7 +345,7 @@ app.post('/honeypot/respond', async (req, res) => {
     const extractedData = trackerState.extractedData;
 
     // Build response with strictly required fields
-    res.json({
+    const response = {
       sessionId: conversationId,
       reply: honeypotReply,
       scamDetected: extractedData.scamType.length > 0,
@@ -360,11 +356,19 @@ app.post('/honeypot/respond', async (req, res) => {
         phoneNumbers: extractedData.phoneNumbers || [],
         suspiciousKeywords: extractedData.suspiciousKeywords || []
       }
-    });
+    };
+    
+    return res.json(response);
 
   } catch (error) {
-    console.error('Honeypot response error:', error);
-    res.status(500).json({ error: 'Honeypot response failed', message: error.message });
+    console.error('❌ Honeypot response error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request body:', JSON.stringify(req.body, null, 2));
+    res.status(500).json({ 
+      error: 'Honeypot response failed', 
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
