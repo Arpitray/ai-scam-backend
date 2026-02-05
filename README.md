@@ -233,7 +233,7 @@ All API requests (except `/health`, `/config`, `/`) require an `x-api-key` heade
 
 ### Example 1: Start a Honeypot Conversation
 
-**Request:**
+**Request (Standard Format):**
 ```bash
 curl -X POST http://localhost:4000/honeypot/respond \
   -H "Content-Type: application/json" \
@@ -241,6 +241,27 @@ curl -X POST http://localhost:4000/honeypot/respond \
   -d '{
     "conversationId": "session-001",
     "scammerMessage": "Hello! This is Amazon customer service. We detected suspicious activity on your account."
+  }'
+```
+
+**Request (Hackathon Format):**
+```bash
+curl -X POST http://localhost:4000/honeypot/respond \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your-secret-api-key-here" \
+  -d '{
+    "sessionId": "wertyu-dfghj-ertyui",
+    "message": {
+      "sender": "scammer",
+      "text": "Your bank account will be blocked today. Verify immediately.",
+      "timestamp": 1770005528731
+    },
+    "conversationHistory": [],
+    "metadata": {
+      "channel": "SMS",
+      "language": "English",
+      "locale": "IN"
+    }
   }'
 ```
 
@@ -261,7 +282,12 @@ curl -X POST http://localhost:4000/honeypot/respond \
     "suspiciousKeywords": ["Amazon", "suspicious activity", "account"]
   },
   "agentNotes": "Scam type: IMPERSONATION. Techniques: AUTHORITY. Completeness: 15%",
-  "conversationHistory": [...]
+  "conversationHistory": [...],
+  "metadata": {
+    "channel": "SMS",
+    "language": "English",
+    "locale": "IN"
+  }
 }
 ```
 

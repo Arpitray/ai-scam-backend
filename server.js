@@ -157,10 +157,31 @@ app.get('/receive-extracted-intelligence', (req, res) => {
 // Main honeypot endpoint - receives scammer message, returns honeypot reply
 app.post('/honeypot/respond', async (req, res) => {
   try {
-    const { conversationId, scammerMessage, conversationHistory } = req.body;
+    // Support both formats:
+    // 1. Original: { conversationId, scammerMessage, conversationHistory }
+    // 2. Hackathon: { sessionId, message: { text, sender, timestamp }, conversationHistory, metadata }
+    
+    let conversationId, scammerMessage, conversationHistory, metadata;
+    
+    if (req.body.sessionId && req.body.message) {
+      // Hackathon format
+      conversationId = req.body.sessionId;
+      scammerMessage = req.body.message.text;
+      conversationHistory = req.body.conversationHistory;
+      metadata = req.body.metadata;
+    } else {
+      // Original format
+      conversationId = req.body.conversationId;
+      scammerMessage = req.body.scammerMessage;
+      conversationHistory = req.body.conversationHistory;
+      metadata = req.body.metadata;
+    }
 
     if (!conversationId || !scammerMessage) {
-      return res.status(400).json({ error: 'Missing required fields: conversationId and scammerMessage' });
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'Provide either { sessionId, message: { text } } or { conversationId, scammerMessage }' 
+      });
     }
 
     const tracker = trackerManager.getTracker(conversationId);
@@ -317,11 +338,10 @@ app.post('/honeypot/respond', async (req, res) => {
     const trackerState = tracker.getState();
     const extractedData = trackerState.extractedData;
 
-    res.json({
+    const responsePayload = {
       sessionId: conversationId,
       scamDetected: extractedData.scamType.length > 0,
       totalMessagesExchanged: history.length,
-      reply: honeypotReply,
       extractedIntelligence: {
         bankAccounts: extractedData.bankAccounts || [],
         upiIds: extractedData.upiIds || [],
@@ -335,8 +355,15 @@ app.post('/honeypot/respond', async (req, res) => {
                   `Techniques: ${extractedData.psychologicalTechniques.join(', ') || 'None'}. ` +
                   `Completeness: ${trackerState.completenessScore}%`,
       status: 'active',
-      
-    });
+      reply: honeypotReply
+    };
+    
+    // Include metadata if provided (hackathon format)
+    if (metadata) {
+      responsePayload.metadata = metadata;
+    }
+    
+    res.json(responsePayload);
 
   } catch (error) {
     console.error('Honeypot response error:', error);
