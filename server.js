@@ -251,7 +251,7 @@ app.post('/honeypot/respond', async (req, res) => {
     // Add scammer message with timestamp from input or current time
     history.push({
       sender: 'scammer',
-      message: scammerMessage,
+      text: scammerMessage,
       timestamp: scammerTimestamp || Date.now()
     });
 
@@ -278,8 +278,8 @@ app.post('/honeypot/respond', async (req, res) => {
       
       // Add sendoff as final honeypot message
       history.push({
-        sender: 'honeypot',
-        message: sendoffMessage,
+        sender: 'user',
+        text: sendoffMessage,
         timestamp: Date.now(),
         isSendoff: true
       });
@@ -337,8 +337,8 @@ app.post('/honeypot/respond', async (req, res) => {
     const honeypotReply = await generateHoneypotReplyWithLLM(history, scammerMessage, tracker.extractedData);
 
     history.push({
-      sender: 'honeypot',
-      message: honeypotReply,
+      sender: 'user',
+      text: honeypotReply,
       timestamp: Date.now()
     });
 
@@ -426,8 +426,8 @@ app.post('/tracker/:id/terminate', (req, res) => {
   const sendoffMessage = getSendoffMessage(terminationReason);
   const history = conversations.get(id) || [];
   history.push({
-    sender: 'honeypot',
-    message: sendoffMessage,
+    sender: 'user',
+    text: sendoffMessage,
     timestamp: Date.now(),
     isSendoff: true
   });
