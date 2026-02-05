@@ -263,19 +263,26 @@ RECENT CONVERSATION:
 CURRENT DATA EXTRACTED:
 {EXTRACTED_DATA}
 
-TERMINATION CRITERIA TO CONSIDER:
-1. Have we extracted significant intelligence (scam type, contact info, attack method)?
-2. Is the scammer getting suspicious or frustrated?
-3. Are we getting diminishing returns (repetitive requests, no new intel)?
-4. Is the scammer about to give up or escalate dangerously?
-5. Have we identified enough for law enforcement action?
+IMPORTANT: Be CONSERVATIVE about terminating. We want to extract as much intel as possible!
+
+TERMINATION CRITERIA (ALL must be met to terminate):
+1. Have we extracted COMPREHENSIVE intelligence including:
+   - Multiple scam types identified
+   - At least 2-3 contact methods (phone/email/link/UPI)
+   - Clear attack methods documented
+   - Multiple psychological techniques identified
+2. Is the scammer extremely frustrated (>80%) or clearly suspicious?
+3. Have we exhausted new information (scammer repeating same requests 3+ times)?
+4. Do we have enough for actionable law enforcement use?
 
 DECISION RULES:
-- CONTINUE: If scammer is cooperative and we're still learning
-- TERMINATE_SUCCESS: If we have good intel and natural exit opportunity
-- TERMINATE_SUSPICIOUS: If scammer seems to suspect honeypot
-- TERMINATE_FRUSTRATION: If scammer is getting aggressive/frustrated
-- TERMINATE_COMPLETE: If we've extracted all possible intelligence
+- CONTINUE: Default choice! Continue if ANY new intel is possible or scammer is still engaged
+- CONTINUE: If we have <15 messages exchanged (need more context)
+- CONTINUE: If completeness <80% (need more data)
+- TERMINATE_SUCCESS: ONLY if we have comprehensive intel (3+ contact methods, clear scam pattern, 15+ messages)
+- TERMINATE_SUSPICIOUS: ONLY if scammer explicitly says "this seems fake" or similar
+- TERMINATE_FRUSTRATION: ONLY if scammer is extremely aggressive/threatening
+- TERMINATE_COMPLETE: ONLY if we have exhausted ALL intelligence (scammer repeating endlessly)
 
 Return JSON:
 {

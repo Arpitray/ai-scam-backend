@@ -7,11 +7,11 @@
 // Configuration for conversation limits and thresholds
 const CONFIG = {
   MAX_CONVERSATION_LENGTH: 30,        // Max messages before forced stop
-  MIN_MESSAGES_FOR_EXTRACTION: 6,     // Minimum before considering stop
-  BASE_COMPLETENESS_THRESHOLD: 70,    // Base % completeness to trigger stop
+  MIN_MESSAGES_FOR_EXTRACTION: 12,    // Minimum before considering stop (increased from 6)
+  BASE_COMPLETENESS_THRESHOLD: 85,    // Base % completeness to trigger stop (increased from 70)
   MAX_CONVERSATION_DURATION: 30 * 60 * 1000,  // 30 minutes
   INACTIVITY_TIMEOUT: 5 * 60 * 1000,          // 5 minutes
-  SCAMMER_FRUSTRATION_THRESHOLD: 80,
+  SCAMMER_FRUSTRATION_THRESHOLD: 85,  // Increased from 80
 
   REQUIRED_DATA_POINTS: ['scamType', 'requestedData', 'attackMethod', 'psychologicalTechniques'],
   BONUS_DATA_POINTS: ['impersonatedEntity', 'phoneNumber', 'email', 'link', 'scammerName']
@@ -380,8 +380,9 @@ class ConversationTracker {
     let score = 0;
     let totalWeight = 0;
 
-    const requiredWeights = { scamType: 25, requestedData: 20, attackMethod: 20, psychologicalTechniques: 15 };
-    const bonusWeights = { impersonatedEntity: 5, phoneNumbers: 5, emails: 5, links: 5 };
+    // Increased weights to require more comprehensive data before high completeness
+    const requiredWeights = { scamType: 20, requestedData: 20, attackMethod: 20, psychologicalTechniques: 15 };
+    const bonusWeights = { impersonatedEntity: 5, phoneNumbers: 7, emails: 7, links: 6 };
 
     for (const [field, weight] of Object.entries(requiredWeights)) {
       totalWeight += weight;
@@ -421,7 +422,8 @@ class ConversationTracker {
     }
 
     // Only use LLM termination decision if we have enough messages for context
-    if (this.messageCount >= CONFIG.MIN_MESSAGES_FOR_EXTRACTION && conversationHistory.length >= 4) {
+    // Require at least 10 messages before LLM can decide to terminate
+    if (this.messageCount >= Math.max(10, CONFIG.MIN_MESSAGES_FOR_EXTRACTION) && conversationHistory.length >= 8) {
       try {
         const { shouldTerminateWithLLM } = require('./llm-service');
         
