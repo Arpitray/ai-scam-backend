@@ -312,7 +312,6 @@ app.post('/honeypot/respond', async (req, res) => {
           upiIds: extractedData.upiIds || [],
           phishingLinks: extractedData.links || [],
           phoneNumbers: extractedData.phoneNumbers || [],
-          emails: extractedData.emails || [],
           suspiciousKeywords: extractedData.suspiciousKeywords || []
         },
         agentNotes: `Scam type: ${extractedData.scamType.join(', ') || 'Unknown'}. ` +

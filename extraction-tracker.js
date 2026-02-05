@@ -182,6 +182,7 @@ class ConversationTracker {
       /\(?\d{3}\)?[-\s]?\d{3}[-\s]?\d{4}\b/g                   // US/Standard format
     ];
     
+    const allPhoneMatches = [];
     phonePatterns.forEach(pattern => {
       const matches = message.match(pattern);
       if (matches) {
@@ -190,6 +191,7 @@ class ConversationTracker {
           // Only add if it's actually a phone number (not a random sequence)
           if (cleaned.length >= 10 && cleaned.length <= 15) {
             this.addUniqueItem('phoneNumbers', phone.trim());
+            allPhoneMatches.push(phone.trim());
           }
         });
       }
@@ -203,7 +205,7 @@ class ConversationTracker {
     if (bankMatches) {
       bankMatches.forEach(match => {
         // Only add if it's not already captured as a phone number
-        const isPhone = phoneMatches?.some(phone => phone.includes(match.replace(/[-\s]/g, '')));
+        const isPhone = allPhoneMatches.some(phone => phone.includes(match.replace(/[-\s]/g, '')));
         if (!isPhone) {
           this.addUniqueItem('bankAccounts', match);
         }
