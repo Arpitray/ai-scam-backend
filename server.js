@@ -379,6 +379,10 @@ app.get('/conversation/:id', (req, res) => {
   res.json({ success: true, conversationId: id, history, messageCount: history.length, trackerState });
 });
 
+app.get("/", (req, res) => {
+  res.send("Welcome to the Honeypot API! Available endpoints: POST /honeypot/respond, GET /conversation/:id, DELETE /conversation/:id, GET /tracker/:id, POST /tracker/:id/terminate, GET /active-conversations, GET /completed-conversations, GET /receive-extracted-intelligence, GET /health, GET /config");
+})
+
 
 // Delete conversation
 app.delete('/conversation/:id', (req, res) => {
