@@ -88,7 +88,7 @@ function sendExtractedIntelligence(payload) {
   }
 
   // Send to external webhook (Default: Hackathon Endpoint)
-  const webhook = process.env.EXTRACTED_INTEL_WEBHOOK || 'https://webhook.site/ee80ba00-a85d-4031-a624-184c987eb0b5';
+  const webhook = process.env.EXTRACTED_INTEL_WEBHOOK || 'https://hackathon.guvi.in/api/updateHoneyPotFinalResult';
 
   try {
     const urlObj = new URL(webhook);
