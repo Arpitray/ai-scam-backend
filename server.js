@@ -367,7 +367,7 @@ app.post('/honeypot/respond', async (req, res) => {
       agentNotes: `Scam type: ${extractedData.scamType.join(', ') || 'Unknown'}. ` +
                   `Techniques: ${extractedData.psychologicalTechniques.join(', ') || 'None'}. ` +
                   `Completeness: ${trackerState.completenessScore}%`,
-      status: 'active',
+      status: 'success',
       reply: honeypotReply
     };
     
