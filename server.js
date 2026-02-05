@@ -124,56 +124,6 @@ app.get('/receive-extracted-intelligence', (req, res) => {
   }
 });
 
-
-// Mock scammer messages for testing purposes
-function getMockScammerMessage(stage) {
-  const scamSequence = [
-    {
-      message: "Hello! This is Sarah from Amazon Customer Service. We've detected suspicious activity on your account.",
-      stage: 'INITIAL_CONTACT',
-      technique: 'IMPERSONATION'
-    },
-    {
-      message: "Your account will be suspended in the next 2 hours if we don't verify your identity. This is urgent!",
-      stage: 'URGENCY_CREATION',
-      technique: 'FEAR_INDUCEMENT'
-    },
-    {
-      message: "We've sent a verification code to your phone. Please share that 6-digit code so we can confirm it's really you.",
-      stage: 'OTP_REQUEST',
-      technique: 'CREDENTIAL_THEFT'
-    },
-    {
-      message: "Sir/Ma'am, I need that code immediately or your account will be permanently locked and you'll lose access to all your orders!",
-      stage: 'PRESSURE_INCREASE',
-      technique: 'LOSS_AVERSION'
-    },
-    {
-      message: "If you can't find the code, please click this link to verify: http://amaz0n-verify.suspicious.com/account",
-      stage: 'PHISHING_LINK',
-      technique: 'PHISHING'
-    },
-    {
-      message: "This is your last chance! Click the link NOW or we will close your account. You have 5 minutes!",
-      stage: 'FINAL_PRESSURE',
-      technique: 'ULTIMATUM'
-    },
-    {
-      message: "Are you still there? I'm waiting for the code. Please hurry!",
-      stage: 'PERSISTENCE',
-      technique: 'PRESSURE'
-    }
-  ];
-
-  if (stage >= scamSequence.length) {
-    const loopIndex = 3 + (stage % 3);
-    return scamSequence[Math.min(loopIndex, scamSequence.length - 1)];
-  }
-
-  return scamSequence[stage];
-}
-
-
 /* ==================== API ROUTES ==================== */
 
 // Main honeypot endpoint - receives scammer message, returns honeypot reply
@@ -307,6 +257,7 @@ app.post('/honeypot/respond', async (req, res) => {
         sessionId: conversationId,
         scamDetected: extractedData.scamType.length > 0,
         totalMessagesExchanged: history.length,
+        reply: sendoffMessage,
         extractedIntelligence: {
           bankAccounts: extractedData.bankAccounts || [],
           upiIds: extractedData.upiIds || [],
@@ -319,7 +270,6 @@ app.post('/honeypot/respond', async (req, res) => {
                     `Techniques: ${extractedData.psychologicalTechniques.join(', ') || 'None'}. ` +
                     `Termination: ${termCheck.terminationReason}`,
         status: 'terminated',
-        reply: sendoffMessage,
         terminationReason: termCheck.terminationReason
       });
     }
@@ -343,6 +293,7 @@ app.post('/honeypot/respond', async (req, res) => {
       sessionId: conversationId,
       scamDetected: extractedData.scamType.length > 0,
       totalMessagesExchanged: history.length,
+      reply: honeypotReply,
       extractedIntelligence: {
         bankAccounts: extractedData.bankAccounts || [],
         upiIds: extractedData.upiIds || [],
@@ -356,7 +307,7 @@ app.post('/honeypot/respond', async (req, res) => {
                   `Techniques: ${extractedData.psychologicalTechniques.join(', ') || 'None'}. ` +
                   `Completeness: ${trackerState.completenessScore}%`,
       status: 'active',
-      reply: honeypotReply
+      
     });
 
   } catch (error) {
