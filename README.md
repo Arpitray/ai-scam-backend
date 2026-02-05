@@ -148,9 +148,16 @@ npm install
 
 Create a `.env` file in the root directory:
 
+**🔐 Required: API Authentication (Hackathon Requirement)**
+```env
+# Required for hackathon evaluation
+API_KEY=your-secret-api-key-here
+```
+
 **Option A: FREE Models via OpenRouter** (Recommended)
 ```env
 PORT=4000
+API_KEY=your-secret-api-key-here
 LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=sk-or-v1-your-key-here
 FRONTEND_ORIGIN=http://localhost:3000
@@ -160,6 +167,7 @@ FRONTEND_ORIGIN=http://localhost:3000
 **Option B: Groq (Also Free, Very Fast)**
 ```env
 PORT=4000
+API_KEY=your-secret-api-key-here
 LLM_PROVIDER=groq
 GROQ_API_KEY=gsk-your-key-here
 FRONTEND_ORIGIN=http://localhost:3000
@@ -169,6 +177,7 @@ FRONTEND_ORIGIN=http://localhost:3000
 **Option C: OpenAI (Paid, High Quality)**
 ```env
 PORT=4000
+API_KEY=your-secret-api-key-here
 LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-your-key-here
 FRONTEND_ORIGIN=http://localhost:3000
@@ -177,6 +186,7 @@ FRONTEND_ORIGIN=http://localhost:3000
 **Option D: No API Key (Fallback Mode)**
 ```env
 PORT=4000
+API_KEY=your-secret-api-key-here
 ```
 System will work with pattern-based detection
 
@@ -194,11 +204,17 @@ npm run dev
 
 ### 4️⃣ Test the System
 
+**Test authentication (recommended for hackathon):**
 ```bash
-node test-honeypot.js
+npm run test:auth
 ```
 
-Or test via curl:
+**Full honeypot conversation test:**
+```bash
+npm test
+```
+
+**Quick health check:**
 ```bash
 curl http://localhost:4000/health
 ```
@@ -207,12 +223,21 @@ curl http://localhost:4000/health
 
 ## 🎮 Usage Examples
 
+### 🔐 Authentication Required
+
+All API requests (except `/health`, `/config`, `/`) require an `x-api-key` header:
+
+```bash
+-H "x-api-key: your-secret-api-key-here"
+```
+
 ### Example 1: Start a Honeypot Conversation
 
 **Request:**
 ```bash
 curl -X POST http://localhost:4000/honeypot/respond \
   -H "Content-Type: application/json" \
+  -H "x-api-key: your-secret-api-key-here" \
   -d '{
     "conversationId": "session-001",
     "scammerMessage": "Hello! This is Amazon customer service. We detected suspicious activity on your account."
@@ -246,6 +271,7 @@ curl -X POST http://localhost:4000/honeypot/respond \
 ```bash
 curl -X POST http://localhost:4000/mock-scammer \
   -H "Content-Type: application/json" \
+  -H "x-api-key: your-secret-api-key-here" \
   -d '{"stage": 2}'
 ```
 
@@ -263,7 +289,8 @@ curl -X POST http://localhost:4000/mock-scammer \
 
 **Request:**
 ```bash
-curl http://localhost:4000/active-conversations
+curl -H "x-api-key: your-secret-api-key-here" \
+  http://localhost:4000/active-conversations
 ```
 
 **Response:**
@@ -291,7 +318,7 @@ curl http://localhost:4000/active-conversations
 
 ### Example 4: Check System Health
 
-**Request:**
+**Request:** (Public endpoint - no auth required)
 ```bash
 curl http://localhost:4000/health
 ```
@@ -322,7 +349,8 @@ curl http://localhost:4000/health
 
 **Request:**
 ```bash
-curl "http://localhost:4000/receive-extracted-intelligence?sessionId=session-001"
+curl -H "x-api-key: your-secret-api-key-here" \
+  "http://localhost:4000/receive-extracted-intelligence?sessionId=session-001"
 ```
 
 **Response:**
@@ -496,13 +524,15 @@ The system automatically extracts:
    Start Command: npm start
    ```
 
-3. **Set Environment Variables**
+3. **Set Environment Variables** ⚠️ **IMPORTANT**
    ```
+   API_KEY=your-secret-api-key-here
    PORT=4000
    LLM_PROVIDER=openai
    OPENAI_API_KEY=sk-your-key-here
    FRONTEND_ORIGIN=https://your-frontend.vercel.app
    ```
+   **Note:** The `API_KEY` is required for hackathon evaluation!
 
 4. **Deploy!**
    - Render will auto-deploy on every push to main
@@ -511,6 +541,7 @@ The system automatically extracts:
 
 ```bash
 heroku create your-honeypot-api
+heroku config:set API_KEY=your-secret-api-key-here
 heroku config:set LLM_PROVIDER=openai
 heroku config:set OPENAI_API_KEY=sk-your-key-here
 git push heroku main
@@ -636,6 +667,26 @@ curl http://localhost:4000/active-conversations
 ---
 
 ## 🔒 Security Considerations
+
+### API Key Authentication
+- ✅ **Required for hackathon evaluation**
+- ✅ All endpoints (except `/health`, `/config`, `/`) require `x-api-key` header
+- ✅ Returns `401 Unauthorized` for invalid/missing keys
+- ✅ Set `API_KEY` in `.env` or Render environment variables
+
+**Example Authenticated Request:**
+```bash
+curl -H "x-api-key: your-secret-api-key-here" \
+  http://localhost:4000/active-conversations
+```
+
+**Example Unauthorized Response:**
+```json
+{
+  "error": "Unauthorized",
+  "message": "Valid API key required. Include x-api-key header."
+}
+```
 
 ### Data Privacy
 - ✅ No persistent database - all data in memory

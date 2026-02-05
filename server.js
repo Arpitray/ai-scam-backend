@@ -12,11 +12,33 @@ const allowedOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
 function corsMiddleware(req, res, next) {
   res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-api-key');
   res.header('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(204);
   }
+  next();
+}
+
+// API Key Authentication Middleware
+function authMiddleware(req, res, next) {
+  const apiKey = req.headers['x-api-key'];
+  const validKey = process.env.API_KEY;
+  
+  // If no API_KEY is configured
+  if (!validKey) {
+    console.warn('⚠️  No API_KEY configured - authentication disabled');
+    return next();
+  }
+  
+  // Validate API key
+  if (!apiKey || apiKey !== validKey) {
+    return res.status(401).json({ 
+      error: 'Unauthorized', 
+      message: 'Valid API key required. Include x-api-key header.' 
+    });
+  }
+  
   next();
 }
 
@@ -34,6 +56,16 @@ const { TrackerManager, CONFIG: TRACKER_CONFIG, getSendoffMessage } = require('.
 
 app.use(express.json());
 app.use(corsMiddleware);
+
+// Apply authentication to all routes except health/config (public endpoints)
+app.use((req, res, next) => {
+  const publicEndpoints = ['/health', '/config', '/'];
+  if (publicEndpoints.includes(req.path)) {
+    return next();
+  }
+  authMiddleware(req, res, next);
+});
+
 const trackerManager = new TrackerManager();
 const conversations = new Map();
 
@@ -45,12 +77,9 @@ setInterval(() => trackerManager.cleanup(), 15 * 60 * 1000);
 const { URL } = require('url');
 const http = require('http');
 const https = require('https');
-
-// In-memory store for extracted intelligence received via webhook
 const extractedIntelligenceStore = [];
 
 function sendExtractedIntelligence(payload) {
-  // Always store locally so that the immediate dashboard view works without relying on a self-webhook
   try {
     const localPayload = { ...payload, _receivedAt: new Date().toISOString() };
     extractedIntelligenceStore.push(localPayload);
@@ -59,7 +88,7 @@ function sendExtractedIntelligence(payload) {
   }
 
   // Send to external webhook (Default: Hackathon Endpoint)
-  const webhook = process.env.EXTRACTED_INTEL_WEBHOOK || 'https://hackathon.guvi.in/api/updateHoneyPotFinalResult';
+  const webhook = process.env.EXTRACTED_INTEL_WEBHOOK || 'https://webhook.site/ee80ba00-a85d-4031-a624-184c987eb0b5';
 
   try {
     const urlObj = new URL(webhook);
@@ -96,7 +125,6 @@ function sendExtractedIntelligence(payload) {
   }
 }
 
-// Internal receiver endpoint (can be overridden by setting EXTRACTED_INTEL_WEBHOOK to an external URL)
 app.post('/receive-extracted-intelligence', (req, res) => {
   try {
     const payload = req.body || {};
