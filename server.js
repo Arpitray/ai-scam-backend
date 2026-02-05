@@ -517,6 +517,5 @@ app.listen(PORT, () => {
   console.log(`\n🍯 Honeypot Server running on port ${PORT}`);
   console.log(`📊 LLM: ${config.name} (${models.fast} / ${models.powerful})`);
   console.log(`⚙️  Max messages: ${TRACKER_CONFIG.MAX_CONVERSATION_LENGTH}`);
-  console.log(`⚙️  Min messages before termination: ${TRACKER_CONFIG.MIN_MESSAGES_FOR_EXTRACTION}`);
-  console.log(`✅ Completeness threshold: ${TRACKER_CONFIG.BASE_COMPLETENESS_THRESHOLD}%\n`);
+  console.log(`✅ Completeness threshold: ${TRACKER_CONFIG.BASE_COMPLETENESS_THRESHOLD}% (dynamic: 65-85%)\n`);
 });

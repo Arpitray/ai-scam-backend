@@ -389,22 +389,17 @@ The system intelligently terminates conversations when optimal intelligence is e
 
 | Trigger | Threshold | Description |
 |---------|-----------|-------------|
-| **Minimum Messages** | 12 messages | Won't terminate before this (ensures sufficient data collection) |
-| **Extraction Complete** | 85%+ completeness | Conservative threshold - requires comprehensive data |
+| **Extraction Complete** | 70-85% completeness | Dynamic threshold based on data quality |
 | **Max Messages** | 30 messages | Prevents infinite conversations |
 | **Max Duration** | 30 minutes | Time-based safety limit |
-| **Scammer Frustration** | 85%+ frustration | Detected through message analysis |
+| **Scammer Frustration** | 80%+ frustration | Detected through message analysis |
 | **Inactivity** | 5 minutes | No response from scammer |
-
-**Note:** The system is configured to be **conservative** and extract as much intelligence as possible before terminating. LLM-based termination requires multiple contact methods (phone/email/link), clear scam patterns, and comprehensive psychological technique identification.
 
 ### Completeness Calculation
 
 The system tracks extraction of:
-- **Required Data** (75 points): Scam type (20), requested data (20), attack method (20), psychological techniques (15)
-- **Bonus Data** (25 points): Impersonated entity (5), phone numbers (7), emails (7), links (6)
-
-**Minimum 85% completeness required for termination** - ensuring comprehensive intelligence gathering.
+- **Required Data** (25% each): Scam type, requested data, attack method, psychological techniques
+- **Bonus Data** (5% each): Impersonated entity, phone numbers, emails, links, scammer names
 
 ### Natural Exit Strategy
 
